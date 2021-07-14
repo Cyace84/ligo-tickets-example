@@ -25,7 +25,7 @@ describe("test", async function () {
       //   .receive([deployedContract, "super", 10])
       //   .send();
       const op = await contract.methods.mint("super").send();
-      await op;
+      await op.confirmation();
       const storage = await contract.storage();
       const ticket = await storage.tickets.get(0);
       console.log(ticket);
