@@ -67,25 +67,36 @@ function send_ticket (
                         : return is
   block {
     var result : return := ((nil : list (operation)), s);
-    // case Big_map.get_and_update(
-    //   params.ticket_id,
-    //   (None: option(ticket_type)), s.tickets) of
-    // | (t, updated_map) -> {
-    //     const ticket : ticket_type = case t of
-    //             Some(ticket) -> ticket
-    //           | None -> failwith("No tickets")
-    //           end;
-    //     s.tickets := updated_map;
-    //     result := (
-    //       list[
-    //         Tezos.transaction(
-    //           ticket,
-    //           0mutez,
-    //           params.destination
-    //         )
-    //       ], s);
-    // }
-    // end
+
+    case s of
+      record[tickets; ticket_id] -> {
+        case Big_map.get_and_update(
+          params.ticket_id,
+          (None: option(ticket_type)),
+          tickets) of
+          (t, updated_tickets) -> {
+            const ticket : ticket_type = case t of
+              Some(ticket) -> ticket
+            | None -> failwith("No tickets")
+            end;
+            result := (
+              list[
+                Tezos.transaction(
+                  ticket,
+                  0mutez,
+                  params.destination
+                )
+              ],
+              record[
+                tickets    = updated_tickets;
+                ticket_id  = ticket_id;
+              ]
+            );
+          }
+        end
+      }
+    end;
+
   } with result
 
 function rec (
