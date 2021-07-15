@@ -1,6 +1,8 @@
-type ticket_type is ticket(string)
+type ticket_value_type  is string
 
-// type storage_type is big_map(nat, ticket_type )
+type ticket_type        is ticket(ticket_value_type)
+
+
 
 type storage_type       is [@layout:comb] record [
   tickets                : big_map(nat, ticket_type );
@@ -8,21 +10,39 @@ type storage_type       is [@layout:comb] record [
 ]
 
 type send_parameter_type is [@layout:comb] record [
-  destination           : contract(ticket_type);
-  ticket_id             : nat
+  destination              : contract(ticket_type);
+  ticket_id                : nat
 ]
 
+type mint_to_type       is [@layout:comb] record [
+  destination            : address;
+  value                  : string;
+  amount                 : nat;
+]
 
-type parameter_type is
-    Mint                of string
-  | Receive             of ticket_type
-  | Send                of send_parameter_type
-type return is list (operation) * storage_type
+type parameter_type     is
+    Mint                  of string
+  | Mint_to               of mint_to_type
+  | Receive               of ticket_type
+  | Send                  of send_parameter_type
 
-type l is big_map(nat, ticket_type)
+type return             is list (operation) * storage_type
+
+type l                  is big_map(nat, ticket_type)
 
 const ss : l = big_map[];
 
+
+function get_receive_contract(
+  const contract_address : address)
+                        : contract(ticket_type) is
+  case (Tezos.get_entrypoint_opt(
+    "%receive_str_ticket",
+     contract_address)
+     : option(contract(ticket_type))) of
+    Some(contr) -> contr
+    | None -> (failwith("No receiver contract") : contract(ticket_type))
+  end;
 
 function mint_ticket (
     const i             : string;
@@ -46,19 +66,7 @@ function mint_ticket (
       }
     end;
 
-    // const updated_storage =
-    //   case Big_map.get_and_update(s.ticket_id, (Some (ticket)), s.tickets) of
-    //     (_, tickets) ->
-    //       record[
-    //         tickets    = tickets;
-    //         ticket_id  = s.ticket_id + 1n;
-    //       ]
-
-    //   end;
    } with result;
-
-
-  // } with ((nil : list (operation)), record[tickets=updated_map; ticket_id=1n]);
 
 
 function send_ticket (
@@ -99,43 +107,60 @@ function send_ticket (
 
   } with result
 
-function rec (
+function receive (
   const params          : ticket_type;
   var s                 : storage_type)
-                        : storage_type is
+                        : return is
 block {
-  const v : string =
-    case (Tezos.read_ticket (params)) of
-    | (content,ticket) -> (
-      case content of
-      | (addr,x) -> (
-        case x of
-        | (payload,amt) -> (
-          payload
-        ) end
-      ) end
-  ) end;
+  var result : return := ((nil : list (operation)), s);
 
-} with s
+  case result.1 of
+    record[tickets; ticket_id] -> {
+      case (Tezos.read_ticket (params)) of
+        (content, ticket) -> {
+          case content of
+            (addr, x) -> {
+              case x of
+                (payload,amt) -> {
+                  skip
+                } end;
+              if addr = Tezos.self_address then skip
+              else failwith("Unknown ticketer")
+          } end;
+          case Big_map.get_and_update(ticket_id, (Some (ticket)), tickets) of
+            (_, updated_tickets) -> {
+              result := (
+                (nil : list (operation)),
+                record[
+                  tickets    = updated_tickets;
+                  ticket_id  = ticket_id + 1n;
+                ]
+              );
+          } end;
+      } end;
+  } end;
+} with result
 
-// const v : int =
-//   case (Tezos.read_ticket (my_ticket1)) of
-//   | (content,ticket) -> (
-//     case content of
-//     | (addr,x) -> (
-//       case x of
-//       | (payload,amt) -> (
-//         payload
-//       ) end
-//     ) end
-//   ) end
+function mint_to (
+    const params        : mint_to_type;
+    const _s            : storage_type)
+                        : return is
+  block {
+    const ticket : ticket_type = Tezos.create_ticket (params.value, params.amount);
+    const contr : contract(ticket_type)  = get_receive_contract(params.destination);
+
+    const op = Tezos.transaction(ticket, 0mutez, contr);
+
+   } with (list[op], _s);
+
 
 function main(
   const action          : parameter_type;
   const s               : storage_type)
                         : return is
   case action of
-      Mint (params)     -> (mint_ticket(params, s))
-    | Receive (params)  -> ((nil : list(operation)), rec(params, s))
-    | Send (params)     -> (send_ticket(params, s))
+      Mint (params)     -> mint_ticket(params, s)
+    | Mint_to (params)  -> mint_to(params, s)
+    | Receive (params)  -> receive(params, s)
+    | Send (params)     -> send_ticket(params, s)
   end
