@@ -29,17 +29,36 @@ function mint_ticket (
     var s               : storage_type)
                         : return is
   block {
-    var e :l := big_map[];
-    const ticket : ticket_type = Tezos.create_ticket (i, 10n);
+    const new_ticket : ticket_type = Tezos.create_ticket (i, 42n);
+    var result : return := ((nil : list (operation)), s);
 
-    const updated_map  : l =
-      case Big_map.get_and_update(0n, (Some (ticket)), s.tickets) of
-      | (_, x) -> x
+    case s of
+      record[tickets; ticket_id] -> {
+        const updated_storage =
+            case Big_map.get_and_update(ticket_id, (Some (new_ticket)), tickets) of
+              (_, updated_tickets) ->
+                record[
+                  tickets    = updated_tickets;
+                  ticket_id  = ticket_id + 1n;
+                ]
+            end;
+        result := ((nil : list (operation)), updated_storage)
+      }
     end;
-    s.tickets := updated_map;
 
- 
-  } with ((nil : list (operation)), s);
+    // const updated_storage =
+    //   case Big_map.get_and_update(s.ticket_id, (Some (ticket)), s.tickets) of
+    //     (_, tickets) ->
+    //       record[
+    //         tickets    = tickets;
+    //         ticket_id  = s.ticket_id + 1n;
+    //       ]
+
+    //   end;
+   } with result;
+
+
+  // } with ((nil : list (operation)), record[tickets=updated_map; ticket_id=1n]);
 
 
 function send_ticket (
@@ -85,7 +104,7 @@ block {
         ) end
       ) end
   ) end;
-  failwith("sds")
+
 } with s
 
 // const v : int =
