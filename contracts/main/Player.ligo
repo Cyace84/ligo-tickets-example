@@ -1,4 +1,4 @@
-#include "./partial/Items.ligo"
+#include "../partial/Items.ligo"
 
 type str_ticket_type    is ticket(string)
 
@@ -41,12 +41,6 @@ type storage_type       is [@layout:comb] record [
 
 // type use_item_type      is (item_id_type * item_count_type)
 
-type return             is list (operation) * storage_type
-
-type parameter_type     is
-    Equip_item            of item_id_type
-  | Unequip_item          of slot_id_type
-  | Use_item              of item_id_type
 
 function equip_item(
   const item_id         : item_id_type;
@@ -76,6 +70,13 @@ function use_item(
     skip
 } with s
 
+type return             is list (operation) * storage_type
+
+type parameter_type     is
+    Equip_item            of item_id_type
+  | Unequip_item          of slot_id_type
+  | Use_item              of item_id_type
+
 
 function main(
   const action          : parameter_type;
@@ -83,7 +84,8 @@ function main(
                         : return is
   case action of
       Equip_item (params)      -> ((nil : list (operation)), equip_item (params, s))
-    | Unequip_item (params) -> ((nil : list (operation)), unequip_item (params, s))
+    | Unequip_item (params)    -> ((nil : list (operation)), unequip_item (params, s))
     | Use_item   (params)      -> ((nil : list (operation)), use_item (params, s))
+    
 
   end
