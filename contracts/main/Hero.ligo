@@ -43,22 +43,27 @@ function activate_account(
           end;
           const return = case updated_items of
             record[ticket; updated_tickets] -> block {
-
-              const sorted_items = if abs(next_slot_item - 1n) = 1n
+              (* Sort inventory *)
+              const sorted_items = if abs(next_slot_item - 1n) = 0n
               then updated_tickets
-              else case Big_map.get_and_update(
-                abs(next_slot_item - 1n),
-                (None: option(consumable_item_type)),
-                updated_tickets) of
-                (t, updated_tickets) ->
-                  case Big_map.get_and_update(
-                    item_id,
-                    t,
-                    updated_tickets
-                  ) of
-                    (_, sorted_tickets) -> sorted_tickets
-                  end
-              end;
+              else block {
+                const sorted =
+                if abs(next_slot_item - 1n) = item_id
+                then updated_tickets
+                else case Big_map.get_and_update(
+                  abs(next_slot_item - 1n),
+                  (None: option(consumable_item_type)),
+                  updated_tickets) of
+                  (t, updated_tickets) ->
+                    case Big_map.get_and_update(
+                      item_id,
+                      t,
+                      updated_tickets
+                    ) of
+                      (_, sorted_tickets) -> sorted_tickets
+                    end
+                end
+              } with sorted;
 
               const op = Tezos.transaction (
                 ticket,
@@ -74,7 +79,7 @@ function activate_account(
                   consumable_items  = sorted_items;
                   inventory_size    = inventory_size;
                   next_slot_weapon  = next_slot_weapon;
-                  next_slot_item    = next_slot_item;];
+                  next_slot_item    = abs(next_slot_item -1n);];
                 stats        = stats;
                 equip        = equip;
                 hp           = hp;
