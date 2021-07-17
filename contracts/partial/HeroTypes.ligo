@@ -6,8 +6,6 @@ type inventory_type     is [@layout:comb] record [
     inventory_size       : nat;
     next_slot_weapon     : slot_id_type;
     next_slot_item       : slot_id_type;
-    weapon_count         : nat;
-    item_count           : nat;
 ]
 
 type equip_type         is [@layout:comb] record [
@@ -27,7 +25,7 @@ type stats_type         is [@layout:comb] record [
 
 type storage_type       is [@layout:comb] record [
   owner                  : address;
-  ticketer               : address;
+  game_server            : address;
   nickname               : string;
   inventory              : inventory_type;
   stats                  : stats_type;
