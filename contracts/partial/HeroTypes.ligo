@@ -1,8 +1,10 @@
 type slot_id_type       is nat
 
+type map_items_type is big_map(slot_id_type, consumable_item_type)
+
 type inventory_type     is [@layout:comb] record [
     weapons              : big_map(slot_id_type, weapon_type);
-    consumable_items     : big_map(slot_id_type, consumable_item_type);
+    consumable_items     : map_items_type;
     inventory_size       : nat;
     next_slot_weapon     : slot_id_type;
     next_slot_item       : slot_id_type;
