@@ -1,11 +1,7 @@
 #include "../partial/Items.ligo"
 #include "../partial/CoreTypes.ligo"
 
-type storage_type       is [@layout:comb] record [
-  owner                   : address;
-  accounts                : big_map(address, account_type)
-]
-type return             is list (operation) * storage_type
+
 
 function get_receive_contract(
   const receiver        : address)
@@ -25,10 +21,20 @@ function create_account (
   case s.accounts[new_acc] of
     Some(acc) -> failwith("Core/registered-acc")
   | None      -> record[
-                   account = new_acc;
+                   addr         = new_acc;
+                   status       = Free;
+                   current_duel = 0n;
                 ]
 end;
 
+function get_account (
+  const addr            : address;
+  const s               : storage_type)
+                        : account_type is
+  case s.accounts[addr] of
+    Some(acc) -> acc
+  | None      -> failwith("Core/no-registered")
+  end
 
 function create_reg_bonus (
   const _unit           : unit)
@@ -91,18 +97,96 @@ function buy_item (
     skip
 } with s
 
-function go_pvp_arena (
-  const arena_pass      : consumable_item_type;
-  const s               : storage_type)
-                        : storage_type is
-  block {
-    skip
-} with s
 
+function clear_lobby (
+  const key             : lvl_type;
+  var s                 : lobby_type)
+                        : lobby_type   is
+  block {
+    remove key from map s
+  } with s
+
+
+function go_pvp_arena (
+  const params          : arena_params_type;
+  var   s               : storage_type)
+                        : storage_type is
+  case params of
+    record[arena_pass; hero_stats] -> block {
+      const t_info =
+      case (Tezos.read_ticket (arena_pass)) of
+        (content, ticket) -> case content of
+          (addr, x) ->
+            case x of
+              (payload, amt) -> block {
+                if payload.id = 1n then skip
+                else failwith("Core/not-pvp-ticket");
+
+                const return = record[
+                  addr = addr;
+                  bet = amt;
+                ]
+              } with return
+            end
+        end
+      end;
+      var account := get_account(t_info.addr, s);
+      if t_info.addr = Tezos.sender then skip
+      else failwith("Core/unknown-sender");
+
+      if t_info.bet = hero_stats.lvl then skip
+      else failwith("Core/low-bet");
+
+      var arena := s.arena;
+      var accounts := s.accounts;
+      case account.status of
+        Free ->
+          case arena.lobby[hero_stats.lvl]  of
+            Some(acc) -> {
+              const new_duel = record[
+                total_pot   = acc.bet + t_info.bet;
+                rounds      = (map[] : map(nat, round_type));
+                next_round  = 1n;
+                winner      = (None: option(address));
+              ];
+              arena.duels[arena.duel_id] := new_duel;
+              arena.duel_id := arena.duel_id + 1n;
+
+              var updated_lobby := clear_lobby(arena.duel_id, arena.lobby);
+              arena.lobby := updated_lobby;
+
+              account.status := In_duel;
+              account.current_duel := arena.duel_id;
+
+              var acc2  := acc.account;
+              acc2.status := In_duel;
+              acc2.current_duel := arena.duel_id;
+
+              accounts[account.addr] := account;
+              accounts[acc2.addr]    := account;
+
+            }
+          | None     ->
+            arena.lobby[hero_stats.lvl] := record[
+                                            account = account;
+                                            bet     = t_info.bet;
+            ]
+          end
+      | Pending_duel -> failwith("Core/pending-duel-already")
+      | In_duel -> failwith("Core/in-duel-already")
+      end;
+      const updated_storage = record[
+        owner    = s.owner;
+        accounts = accounts;
+        arena    = arena;
+      ];
+
+    } with updated_storage
+  end
 
 type parameter_type     is
   Registration            of registration_params_type
-| Go_pvp_arena            of consumable_item_type
+| Go_pvp_arena            of arena_params_type
 | Buy_item                of item_id_type
 
 function main(

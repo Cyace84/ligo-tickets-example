@@ -4,13 +4,17 @@ type registration_params_type is [@layout:comb] record [
     callback              : contract(list(consumable_item_type));
   ]
 
+type account_status_type is
+  Pending_duel
+| In_duel
+| Free
+
 type account_type       is [@layout:comb] record [
-    account               : address;
+    addr                  : address;
+    status                : account_status_type;
+    current_duel          : nat;
 ]
 
-type lvl_room_type      is list(account_type)
-
-type lobby_type is big_map(nat, lvl_room_type)
 
 type target_type        is
   Head
@@ -21,11 +25,17 @@ type duel_action_type   is
 | Deffend                of nat
 | Use_item               of item_id_type
 
-type duel_actions_type is map(nat, duel_action_type)
+type duel_actions_type  is map(nat, duel_action_type)
 
+type hero_status_type   is [@layout:comb] record [
+  hp                      : nat;
+  buff                    : nat;
+  debuff                  : nat;
+]
 
 type round_type         is [@layout:comb] record [
   actions                 : map(address, duel_actions_type);
+  hero_status             : map(address, hero_status_type);
   start_at                : timestamp;
 ]
 
@@ -36,13 +46,36 @@ type duel_type          is [@layout:comb] record [
   winner                  : option(address);
 ]
 
-type pre_duel_type      is [@layout:comb] record[
-  account                 : address;
-  bet                     : nat;
+
+type lvl_type           is nat
+
+type pending_hero_type  is [@layout:comb] record [
+  account                   : account_type;
+  bet                       : nat;
 ]
+
+type lobby_type         is big_map(lvl_type, pending_hero_type)
 type arena_type         is [@layout:comb] record [
-  lobby                   : lobby_type;
+  lobby                   : lobby_type  ;
   duels                   : big_map(nat, duel_type);
   duel_id                 : nat;
-  pre_duel_cache          : big_map(address, pre_duel_type);
 ]
+
+type hero_stats_type    is [@layout:comb] record [
+  lvl                     : nat;
+  hp                      : nat;
+  damage                  : nat;
+]
+
+type arena_params_type  is [@layout:comb] record [
+  arena_pass              : consumable_item_type;
+  hero_stats              : hero_stats_type;
+]
+
+type storage_type       is [@layout:comb] record [
+  owner                   : address;
+  accounts                : big_map(address, account_type);
+  arena                   : arena_type;
+]
+
+type return             is list (operation) * storage_type
