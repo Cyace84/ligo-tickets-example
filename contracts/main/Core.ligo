@@ -212,10 +212,14 @@ function receive_battle_params (
   block {
     var account := get_account(Tezos.sender, s);
     var arena := s.arena;
-    var duel := case arena.duels[account.current_duel] of
-      Some(duel) -> duel
-    | None       -> (failwith("Core/oops") : (duel_type))
+    var duel : duel_type:= case arena.duels[account.current_duel] of
+      Some(duel) -> case duel.winner of
+        Some(addr) -> failwith("Core/duel-over")
+      | None     -> duel
+      end
+    | None       -> failwith("Core/oops")
     end;
+
     if duel.p_already = 0n
     then {
       const actions = map[account.addr -> params];
