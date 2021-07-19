@@ -1,8 +1,8 @@
 
-type registration_params_type is [@layout:comb] record [
-    registration_ticket    : consumable_item_type;
-    callback              : contract(list(consumable_item_type));
-  ]
+// type registration_params_type is [@layout:comb] record [
+//     registration_ticket    : consumable_item_type;
+//     callback              : contract(consumable_item_type);
+//   ]
 
 type account_status_type is
   Pending_duel
@@ -95,3 +95,4 @@ type return             is list (operation) * storage_type
 
 
 type receive_battle_params is (duel_action_type * duel_action_type)
+

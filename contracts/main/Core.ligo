@@ -72,12 +72,12 @@ function create_reg_bonus (
   } with start_points;
 
 function registration (
-  const reg_params      : registration_params_type;
+  const reg_ticket      : consumable_item_type;
   var s                 : storage_type)
                         : return is
   block {
     var result : return := ((nil : list (operation)), s);
-    case (Tezos.read_ticket (reg_params.registration_ticket)) of
+    case (Tezos.read_ticket (reg_ticket)) of
         (content, ticket) -> {
           case content of
             (addr, x) -> {
@@ -342,7 +342,7 @@ block {
 } with (list[op], s)
 
 type parameter_type     is
-  Registration            of registration_params_type
+  Registration            of consumable_item_type
 | Go_pvp_arena            of arena_params_type
 | Buy_item                of item_id_type
 | Receive_battle          of receive_battle_params
