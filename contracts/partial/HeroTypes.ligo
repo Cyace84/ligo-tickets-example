@@ -37,4 +37,17 @@ type storage_type       is [@layout:comb] record [
   exp                    : nat;
   lvl                    : nat;
 ]
+
 type return             is list (operation) * storage_type
+
+
+type target_type        is
+  Head
+| Body
+
+type duel_action_type   is
+  Attack                 of target_type
+| Deffend                of target_type
+| Use                    of item_id_type
+
+type send_pvp_params is (duel_action_type * duel_action_type)

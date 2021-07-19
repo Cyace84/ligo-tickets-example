@@ -12,6 +12,17 @@ function get_reg_contract(
   | None -> (failwith("No game contract") : contract(consumable_item_type))
   end;
 
+function get_pvp_contract(
+  const addr            : address)
+                        : contract(send_pvp_params) is
+  case (Tezos.get_entrypoint_opt(
+    "%receive_battle",
+    addr)
+    : option(contract(send_pvp_params))) of
+    Some(contr) -> contr
+  | None -> (failwith("No pvp contract") : contract(send_pvp_params))
+  end;
+
 function activate_account(
   const item_id         : item_id_type;
   const s               : storage_type)
@@ -188,6 +199,32 @@ function receive_item (
     end;
 } with updated_storage
 
+function go_pvp (
+  const params          : send_pvp_params;
+  var s                 : storage_type)
+                        : return is
+  case s of
+    record[owner; game_server; nickname; inventory; stats; equip; hp; damage; exp; lvl ] -> block {
+      const contr = get_pvp_contract(game_server);
+      const op = Tezos.transaction (
+        params,
+        0mutez,
+        contr
+      );
+      const up : storage_type = record[
+        owner        = owner;
+        game_server  = game_server;
+        nickname     = nickname;
+        inventory    = inventory;
+        stats        = stats;
+        equip        = equip;
+        hp           = hp;
+        damage       = damage;
+        exp          = exp;
+        lvl          = lvl;
+      ];
+    } with (list[op], up)
+  end
 
 type parameter_type     is
     Activate_account      of item_id_type
@@ -195,6 +232,7 @@ type parameter_type     is
   | Unequip_item          of slot_id_type
   | Use_item              of item_id_type
   | Receive_item          of consumable_item_type
+  | Pvp                   of send_pvp_params
 
 
 function main(
@@ -207,80 +245,8 @@ function main(
     | Unequip_item (params)    -> ((nil : list (operation)), unequip_item (params, s))
     | Use_item   (params)      -> ((nil : list (operation)), use_item (params, s))
     | Receive_item (params)    -> ((nil : list (operation)), receive_item (params, s))
+    | Pvp (params)             -> go_pvp (params, s)
 
   end
 
 
-// function activate_account(
-//   const item_id         : item_id_type;
-//   const s               : storage_type)
-//                         : return is
-//   block {
-//     var result : return := ((nil : list (operation)), s);
-//     case s of
-//       record[owner; game_server; nickname; inventory; stats; equip; hp; damage; exp; lvl ] -> {
-//         case inventory of
-//           record[
-//             weapons;
-//             consumable_items;
-//             inventory_size;
-//             next_slot_weapon;
-//             next_slot_item;
-//           ]           -> {
-//           const contr : contract(consumable_item_type) =
-//                 get_reg_contract(game_server);
-//           const updated_items = case Big_map.get_and_update(
-//             item_id,
-//             (None: option(consumable_item_type)),
-//             consumable_items) of
-//             (t, _updated_tickets) -> block {
-
-//               const ticket : consumable_item_type = case t of
-//                 Some(ticket) -> ticket
-//               | None -> failwith("No reg ticket")
-//               end;
-
-//               // if abs(next_slot_item) - 1n = 1n then skip
-//               // else {
-
-//               // }
-//               const updated_tickets = _updated_tickets;
-//             } with record[ticket=ticket;updated_tickets=_updated_tickets]
-//           end;
-
-//           case updated_items of
-//             record[ticket; updated_tickets] -> {
-//               result := (
-//                 list [
-//                   Tezos.transaction (
-//                     ticket,
-//                     0mutez,
-//                     contr
-//                   )
-//                 ],
-//                 record[
-//                   owner        = owner;
-//                   game_server  = game_server;
-//                   nickname     = nickname;
-//                   inventory    = record[
-//                     weapons           = weapons;
-//                     consumable_items  = updated_tickets;
-//                     inventory_size    = inventory_size;
-//                     next_slot_weapon  = next_slot_weapon;
-//                     next_slot_item    = next_slot_item;];
-//                   stats        = stats;
-//                   equip        = equip;
-//                   hp           = hp;
-//                   damage       = damage;
-//                   exp          = exp;
-//                   lvl          = lvl;
-//                 ]
-//               );
-//             }
-//           end;
-//           }
-//         end;
-//       }
-//     end;
-
-//   } with result
