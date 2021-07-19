@@ -19,12 +19,21 @@ function create_account (
     const s               : storage_type)
                           : account_type is
   case s.accounts[new_acc] of
-    Some(acc) -> failwith("Core/registered-acc")
-  | None      -> record[
-                   addr         = new_acc;
-                   status       = Free;
-                   current_duel = 0n;
-                ]
+    Some(acc) ->  failwith("Core/registered-acc")
+  | None      ->  record[
+                    addr         = new_acc;
+                    status       = Free;
+                    current_duel = 0n;
+                    last_stats   = record[
+                      lvl     = 0n;
+                      hp      = 0n;
+                      damage  = 0n;
+                      str     = 0n;
+                      con     = 0n;
+                      dex     = 0n;
+                      acc     = 0n;
+                    ];
+                  ]
 end;
 
 function get_account (
@@ -143,11 +152,15 @@ function go_pvp_arena (
         Free ->
           case arena.lobby[hero_stats.lvl]  of
             Some(acc) -> {
+              var account_2  := get_account(acc.addr, s);
               const new_duel = record[
+                hero_1      = acc.addr;
+                hero_2      = account.addr;
                 total_pot   = acc.bet + t_info.bet;
                 rounds      = (map[] : map(nat, round_type));
                 next_round  = 1n;
                 winner      = (None: option(address));
+                p_already   = 0n;
               ];
               arena.duels[arena.duel_id] := new_duel;
               arena.duel_id := arena.duel_id + 1n;
@@ -157,18 +170,26 @@ function go_pvp_arena (
 
               account.status := In_duel;
               account.current_duel := arena.duel_id;
+              account.last_stats := record[
+                lvl                     = hero_stats.lvl;
+                hp                      = hero_stats.hp;
+                damage                  = hero_stats.damage;
+                str                     = hero_stats.str;
+                con                     = hero_stats.con;
+                dex                     = hero_stats.dex;
+                acc                     = hero_stats.acc;
+              ];
 
-              var acc2  := acc.account;
-              acc2.status := In_duel;
-              acc2.current_duel := arena.duel_id;
+              account_2.status := In_duel;
+              account_2.current_duel := arena.duel_id;
 
-              accounts[account.addr] := account;
-              accounts[acc2.addr]    := account;
+              accounts[account.addr]   := account;
+              accounts[account_2.addr] := account;
 
             }
           | None     ->
             arena.lobby[hero_stats.lvl] := record[
-                                            account = account;
+                                            addr    = account.addr;
                                             bet     = t_info.bet;
             ]
           end
@@ -184,10 +205,88 @@ function go_pvp_arena (
     } with updated_storage
   end
 
+function receive_battle_params (
+  const params          : receive_battle_params;
+  var s                 : storage_type)
+                        : storage_type is
+  block {
+    var account := get_account(Tezos.sender, s);
+    var arena := s.arena;
+    var duel := case arena.duels[account.current_duel] of
+      Some(duel) -> duel
+    | None       -> (failwith("Core/oops") : (duel_type))
+    end;
+    if duel.p_already = 0n
+    then {
+      const actions = map[account.addr -> params];
+      const new_round = record[
+        actions           = actions;
+        hero_status       = (map[] : hstatus_map_type);
+        started_at        = Tezos.now;
+      ];
+      duel.rounds[duel.next_round] := new_round;
+      duel.p_already := 1n;
+
+      arena.duels[account.current_duel] := duel;
+      s.arena := arena;
+    } else {
+      var account_1 := get_account(duel.hero_1, s);
+      var account_2 := account;
+
+      var round := case duel.rounds[account_2.current_duel] of
+        Some(d) -> d
+        | None  -> (failwith("Core/oops") : (round_type))
+      end;
+
+      round.actions[account_2.addr] := params;
+
+      var h1_action : p_action :=
+      case round.actions[duel.hero_1] of
+        Some(d) -> d
+      | None  -> failwith("Core/oops")
+      end;
+
+      var hero_2_action : p_action :=
+      case round.actions[duel.hero_2] of
+        Some(d) -> d
+      | None  -> failwith("Core/oops")
+      end;
+      const  h2_action = params;
+
+      (* PVP *)
+      const h1_stat = record[
+        hp         = 10n;
+        buff       = 0n;
+        debuff     = 0n;
+      ];
+
+      const h2_stat = record[
+        hp         = 0n;
+        buff       = 0n;
+        debuff     = 0n;
+      ];
+
+      var h1_alive := if h1_stat.hp > 0n then True else False;
+      var h2_alive := if h2_stat.hp > 0n then True else False;
+
+      if h1_alive = True and h2_alive = True then skip
+      else {
+        if h1_alive = True
+        then duel.winner := Some(account_1.addr)
+        else duel.winner := Some(account_2.addr)
+      };
+
+      duel.rounds[duel.next_round] := round;
+      arena.duels[account.current_duel] := duel;
+      s.arena := arena;
+    }
+  } with s
+
 type parameter_type     is
   Registration            of registration_params_type
 | Go_pvp_arena            of arena_params_type
 | Buy_item                of item_id_type
+| Receive_battle          of receive_battle_params
 
 function main(
   const action          : parameter_type;
@@ -197,4 +296,5 @@ function main(
     Registration  (params)      -> registration (params, s)
   | Buy_item (params)           -> ((nil : list (operation)), buy_item (params, s))
   | Go_pvp_arena (params)       -> ((nil : list (operation)), go_pvp_arena (params, s))
+  | Receive_battle (params)     -> ((nil : list (operation)), receive_battle_params(params, s))
   end
