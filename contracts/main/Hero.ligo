@@ -16,11 +16,22 @@ function get_reg_arena_contract(
   const addr            : address)
                         : contract(arena_params_type) is
   case (Tezos.get_entrypoint_opt(
-    "%receive_battle",
+    "%go_pvp_arena",
     addr)
     : option(contract(arena_params_type))) of
     Some(contr) -> contr
   | None -> (failwith("No pvp contract") : contract(arena_params_type))
+  end;
+
+function get_shop_contract(
+  const addr            : address)
+                        : contract(item_id_type) is
+  case (Tezos.get_entrypoint_opt(
+    "%buy_item",
+    addr)
+    : option(contract(item_id_type))) of
+    Some(contr) -> contr
+  | None -> (failwith("No pvp contract") : contract(item_id_type))
   end;
 
 function get_pvp_contract(
@@ -134,6 +145,32 @@ function unequip_item(
     skip
 } with s
 
+function buy_item(
+  const item_id        : item_id_type;
+  const s               : storage_type)
+                        : return is
+  case s of
+    record[owner; game_server; nickname; inventory; stats; equip; hp; damage; exp; lvl ] -> block {
+      const contr = get_shop_contract(game_server);
+      const op = Tezos.transaction (
+        1n,
+        0mutez,
+        contr
+        );
+      const up = record[
+        owner        = owner;
+        game_server  = game_server;
+        nickname     = nickname;
+        inventory    = inventory;
+        stats        = stats;
+        equip        = equip;
+        hp           = hp;
+        damage       = damage;
+        exp          = exp;
+        lvl          = lvl;
+      ];
+    } with (list[op], up)
+  end
 
 function use_item(
   const item_id        : item_id_type;
@@ -210,7 +247,7 @@ function receive_item (
     end;
 } with updated_storage
 
-function reg_pvp (
+function reg_arena (
   const item_id         : item_id_type;
   var s                 : storage_type)
                         : return is
@@ -333,6 +370,7 @@ type parameter_type     is
   | Equip_item            of item_id_type
   | Unequip_item          of slot_id_type
   | Use_item              of item_id_type
+  | Buy_item              of item_id_type
   | Receive_item          of consumable_item_type
   | Reg_arena             of item_id_type
   | Pvp                   of send_pvp_params
@@ -347,8 +385,9 @@ function main(
     | Equip_item (params)      -> ((nil : list (operation)), equip_item (params, s))
     | Unequip_item (params)    -> ((nil : list (operation)), unequip_item (params, s))
     | Use_item   (params)      -> ((nil : list (operation)), use_item (params, s))
+    | Buy_item (params)        ->  buy_item (params, s)
     | Receive_item (params)    -> ((nil : list (operation)), receive_item (params, s))
-    | Reg_arena (params)       -> reg_pvp(params, s)
+    | Reg_arena (params)       -> reg_arena(params, s)
     | Pvp (params)             -> go_pvp (params, s)
 
   end
