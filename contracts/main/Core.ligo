@@ -101,10 +101,22 @@ function registration (
 function buy_item (
   const item_id         : item_id_type;
   const s               : storage_type)
-                        : storage_type is
+                        : return is
   block {
-    skip
-} with s
+  const pass : consumable_type =
+      record [
+        id    = 1n;
+        name  = "Arena pass";
+        value = 1n;
+      ];
+
+  const arena_pass : consumable_item_type =
+      Tezos.create_ticket (pass, 1n);
+  const contr = get_receiver_contract(Tezos.sender);
+
+  const op = Tezos.transaction(arena_pass, 0mutez, contr);
+
+} with (list[op], s)
 
 
 function clear_lobby (
@@ -139,9 +151,9 @@ function go_pvp_arena (
             end
         end
       end;
-      var account := get_account(t_info.addr, s);
-      if t_info.addr = Tezos.sender then skip
-      else failwith("Core/unknown-sender");
+      var account := get_account(Tezos.sender, s);
+      if t_info.addr = Tezos.self_address then skip
+      else failwith("Core/unknown-ticketer");
 
       if t_info.bet = hero_stats.lvl then skip
       else failwith("Core/low-bet");
@@ -354,7 +366,7 @@ function main(
                         : return is
   case action of
     Registration  (params)      -> registration (params, s)
-  | Buy_item (params)           -> ((nil : list (operation)), buy_item (params, s))
+  | Buy_item (params)           -> buy_item (params, s)
   | Go_pvp_arena (params)       -> ((nil : list (operation)), go_pvp_arena (params, s))
   | Receive_battle (params)     -> receive_battle_params(params, s)
   | Send_invite (params)        -> send_invite(params, s)
