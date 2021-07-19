@@ -51,3 +51,18 @@ type duel_action_type   is
 | Use                    of item_id_type
 
 type send_pvp_params is (duel_action_type * duel_action_type)
+
+type hero_stats_type    is [@layout:comb] record [
+  lvl                     : nat;
+  hp                      : nat;
+  damage                  : nat;
+  str                     : nat;
+  con                     : nat;
+  dex                     : nat;
+  acc                     : nat;
+]
+
+type arena_params_type  is [@layout:comb] record [
+  arena_pass              : consumable_item_type;
+  hero_stats              : hero_stats_type;
+]
