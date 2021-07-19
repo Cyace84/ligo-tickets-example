@@ -3,7 +3,7 @@
 
 
 
-function get_receive_contract(
+function get_receiver_contract(
   const receiver        : address)
                         : contract(list(consumable_item_type)) is
   case (Tezos.get_entrypoint_opt(
@@ -58,7 +58,7 @@ function create_reg_bonus (
 
     const stat_point : consumable_type =
       record [
-        id    = 1n;
+        id    = 3n;
         name  = "Noob stat point";
         value = 1n;
       ];
@@ -90,7 +90,7 @@ function registration (
                   const new_account : account_type = create_account(Tezos.sender, s);
                   s.accounts[Tezos.sender] := new_account;
                   const bonus : list(consumable_item_type) = create_reg_bonus(unit);
-                  const contr : contract(list(consumable_item_type))  = get_receive_contract(Tezos.sender);
+                  const contr : contract(list(consumable_item_type))  = get_receiver_contract(Tezos.sender);
                   const op = Tezos.transaction(bonus, 0mutez, contr);
                   result := (list[op], s);
                 } end
@@ -210,6 +210,7 @@ function receive_battle_params (
   var s                 : storage_type)
                         : storage_type is
   block {
+    // var result : return := ((nil : list (operation)), s);
     var account := get_account(Tezos.sender, s);
     var arena := s.arena;
     var duel : duel_type:= case arena.duels[account.current_duel] of
@@ -283,6 +284,8 @@ function receive_battle_params (
       duel.rounds[duel.next_round] := round;
       arena.duels[account.current_duel] := duel;
       s.arena := arena;
+
+      
     }
   } with s
 
