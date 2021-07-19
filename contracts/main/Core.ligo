@@ -238,6 +238,12 @@ function receive_battle_params (
       var account_1 := get_account(duel.hero_1, s);
       var account_2 := account;
 
+      account_1.status := Free;
+      account_2.status := Free;
+      s.accounts[account_1.addr] := account_1;
+      s.accounts[account_2.addr] := account_2;
+
+
       var round := case duel.rounds[account_2.current_duel] of
         Some(d) -> d
         | None  -> (failwith("Core/oops") : (round_type))
