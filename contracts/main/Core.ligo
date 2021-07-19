@@ -321,11 +321,32 @@ function receive_battle_params (
     }
   } with result
 
+function send_invite(
+  const receiver        : address;
+  const s               : storage_type)
+                        : return is
+block {
+  const inv : consumable_type =
+      record [
+        id    = 0n;
+        name  = "Reg ticket";
+        value = 1n;
+      ];
+
+  const invite : consumable_item_type =
+      Tezos.create_ticket (inv, 1n);
+  const contr = get_receiver_contract(receiver);
+
+  const op = Tezos.transaction(invite, 0mutez, contr);
+
+} with (list[op], s)
+
 type parameter_type     is
   Registration            of registration_params_type
 | Go_pvp_arena            of arena_params_type
 | Buy_item                of item_id_type
 | Receive_battle          of receive_battle_params
+| Send_invite             of address
 
 function main(
   const action          : parameter_type;
@@ -336,4 +357,5 @@ function main(
   | Buy_item (params)           -> ((nil : list (operation)), buy_item (params, s))
   | Go_pvp_arena (params)       -> ((nil : list (operation)), go_pvp_arena (params, s))
   | Receive_battle (params)     -> receive_battle_params(params, s)
+  | Send_invite (params)        -> send_invite(params, s)
   end
