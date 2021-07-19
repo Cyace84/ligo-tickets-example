@@ -5,13 +5,13 @@
 
 function get_receiver_contract(
   const receiver        : address)
-                        : contract(list(consumable_item_type)) is
+                        : contract(consumable_item_type) is
   case (Tezos.get_entrypoint_opt(
     "%receive_item",
      receiver)
-     : option(contract(list(consumable_item_type)))) of
+     : option(contract(consumable_item_type))) of
     Some(contr) -> contr
-    | None -> (failwith("No receiver contract") : contract(list(consumable_item_type)))
+    | None -> (failwith("No receiver contract") : contract(consumable_item_type))
   end;
 
 function create_account (
@@ -47,14 +47,14 @@ function get_account (
 
 function create_reg_bonus (
   const _unit           : unit)
-                        : list(consumable_item_type) is
+                        : consumable_item_type is
   block {
-    const weapon_ticket : consumable_type =
-      record [
-        id  = 2n;
-        name = "Noob weapon ticket";
-        value = 1n;
-    ];
+    // const weapon_ticket : consumable_type =
+    //   record [
+    //     id  = 2n;
+    //     name = "Noob weapon ticket";
+    //     value = 1n;
+    // ];
 
     const stat_point : consumable_type =
       record [
@@ -63,13 +63,13 @@ function create_reg_bonus (
         value = 1n;
       ];
 
-    const start_weapon : consumable_item_type =
-      Tezos.create_ticket (weapon_ticket, 1n);
+    // const start_weapon : consumable_item_type =
+    //   Tezos.create_ticket (weapon_ticket, 1n);
 
     const start_points : consumable_item_type =
       Tezos.create_ticket (stat_point, 10n);
 
-  } with list[start_weapon; start_points];
+  } with start_points;
 
 function registration (
   const reg_params      : registration_params_type;
@@ -89,8 +89,8 @@ function registration (
                   else failwith("Core/not-reg-ticket");
                   const new_account : account_type = create_account(Tezos.sender, s);
                   s.accounts[Tezos.sender] := new_account;
-                  const bonus : list(consumable_item_type) = create_reg_bonus(unit);
-                  const contr : contract(list(consumable_item_type))  = get_receiver_contract(Tezos.sender);
+                  const bonus : consumable_item_type = create_reg_bonus(unit);
+                  const contr : contract(consumable_item_type)  = get_receiver_contract(Tezos.sender);
                   const op = Tezos.transaction(bonus, 0mutez, contr);
                   result := (list[op], s);
                 } end
@@ -208,9 +208,9 @@ function go_pvp_arena (
 function receive_battle_params (
   const params          : receive_battle_params;
   var s                 : storage_type)
-                        : storage_type is
+                        : return is
   block {
-    // var result : return := ((nil : list (operation)), s);
+    var result : return := ((nil : list (operation)), s);
     var account := get_account(Tezos.sender, s);
     var arena := s.arena;
     var duel : duel_type:= case arena.duels[account.current_duel] of
@@ -285,9 +285,35 @@ function receive_battle_params (
       arena.duels[account.current_duel] := duel;
       s.arena := arena;
 
-      
+      const money : consumable_type =
+      record [
+        id    = 4n;
+        name  = "Money";
+        value = 1n;
+      ];
+
+      const exp : consumable_type =
+      record [
+        id    = 5n;
+        name  = "exp";
+        value = 1n;
+      ];
+
+      const prize_1 : consumable_item_type =
+        Tezos.create_ticket (money, duel.total_pot);
+      const prize_2 : consumable_item_type =
+        Tezos.create_ticket (exp, 5n);
+
+      const winner :address = case duel.winner of
+        Some(w) -> w
+        | None -> failwith("Core/oops")
+      end;
+      const contr : contract(consumable_item_type)  = get_receiver_contract(winner);
+      const op_1 = Tezos.transaction(prize_1, 0mutez, contr);
+      const op_2 = Tezos.transaction(prize_2, 0mutez, contr);
+      result := (list[op_1; op_2], s);
     }
-  } with s
+  } with result
 
 type parameter_type     is
   Registration            of registration_params_type
@@ -303,5 +329,5 @@ function main(
     Registration  (params)      -> registration (params, s)
   | Buy_item (params)           -> ((nil : list (operation)), buy_item (params, s))
   | Go_pvp_arena (params)       -> ((nil : list (operation)), go_pvp_arena (params, s))
-  | Receive_battle (params)     -> ((nil : list (operation)), receive_battle_params(params, s))
+  | Receive_battle (params)     -> receive_battle_params(params, s)
   end

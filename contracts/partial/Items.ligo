@@ -12,7 +12,9 @@ type weapon_type is ticket(weapon_ticket_type)
   0 - registration ticket
   1 - arena pass
   2 - random weapon
-  3 - noob stats point*)
+  3 - noob stats point
+  4 - money
+  5 - exp *)
 
 type consumable_type    is [@layout:comb] record [
   id                      : item_id_type;
