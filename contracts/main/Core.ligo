@@ -181,7 +181,7 @@ function go_pvp_arena (
               arena.lobby := updated_lobby;
 
               account.status := In_duel;
-              account.current_duel := arena.duel_id;
+              account.current_duel := abs(arena.duel_id - 1n);
               account.last_stats := record[
                 lvl                     = hero_stats.lvl;
                 hp                      = hero_stats.hp;
@@ -193,7 +193,7 @@ function go_pvp_arena (
               ];
 
               account_2.status := In_duel;
-              account_2.current_duel := arena.duel_id;
+              account_2.current_duel := abs(arena.duel_id - 1n);
 
               accounts[account.addr]   := account;
               accounts[account_2.addr] := account;
@@ -230,7 +230,7 @@ function receive_battle_params (
         Some(addr) -> failwith("Core/duel-over")
       | None     -> duel
       end
-    | None       -> failwith("Core/oops")
+    | None       -> failwith("Core/oops1")
     end;
 
     if duel.p_already = 0n
@@ -246,6 +246,8 @@ function receive_battle_params (
 
       arena.duels[account.current_duel] := duel;
       s.arena := arena;
+
+      result := ((nil : list (operation)), s)
     } else {
       var account_1 := get_account(duel.hero_1, s);
       var account_2 := account;
@@ -256,9 +258,9 @@ function receive_battle_params (
       s.accounts[account_2.addr] := account_2;
 
 
-      var round := case duel.rounds[account_2.current_duel] of
+      var round := case duel.rounds[duel.next_round] of
         Some(d) -> d
-        | None  -> (failwith("Core/oops") : (round_type))
+        | None  -> (failwith("Core/oops2") : (round_type))
       end;
 
       round.actions[account_2.addr] := params;
@@ -266,14 +268,14 @@ function receive_battle_params (
       var h1_action : p_action :=
       case round.actions[duel.hero_1] of
         Some(d) -> d
-      | None  -> failwith("Core/oops")
+      | None  -> failwith("Core/oops3")
       end;
 
-      var hero_2_action : p_action :=
-      case round.actions[duel.hero_2] of
-        Some(d) -> d
-      | None  -> failwith("Core/oops")
-      end;
+      // var hero_2_action : p_action :=
+      // case round.actions[duel.hero_2] of
+      //   Some(d) -> d
+      // | None  -> failwith("Core/oops4")
+      // end;
       const  h2_action = params;
 
       (* PVP *)
@@ -300,6 +302,7 @@ function receive_battle_params (
       };
 
       duel.rounds[duel.next_round] := round;
+      duel.next_round := duel.next_round + 1n;
       arena.duels[account.current_duel] := duel;
       s.arena := arena;
 
@@ -324,7 +327,7 @@ function receive_battle_params (
 
       const winner :address = case duel.winner of
         Some(w) -> w
-        | None -> failwith("Core/oops")
+        | None -> failwith("Core/oops5")
       end;
       const contr : contract(consumable_item_type)  = get_receiver_contract(winner);
       const op_1 = Tezos.transaction(prize_1, 0mutez, contr);
