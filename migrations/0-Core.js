@@ -1,5 +1,4 @@
 const { migrate } = require("../scripts/helpers");
-const { MichelsonMap } = require("@taquito/michelson-encoder/");
 const storage = require("../storage/Core");
 const fse = require("fs-extra");
 
