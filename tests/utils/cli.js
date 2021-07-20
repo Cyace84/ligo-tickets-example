@@ -1,8 +1,7 @@
 const { TezosToolkit } = require("@taquito/taquito");
 const { InMemorySigner } = require("@taquito/signer");
 
-const { alice } = require("../../scripts/sandbox/accounts");
-const { bob } = require("../../scripts/sandbox/accounts");
+const { alice, bob } = require("../../scripts/sandbox/accounts");
 
 const env = require("../../env");
 const networkConfig = env.networks.development;
@@ -19,4 +18,4 @@ Tezos.setSignerProvider(signerAlice);
 
 // const deployedContract = getDeploydAddress("Governance");
 
-module.exports = { Tezos, signerAlice, signerBob, alice };
+module.exports = { Tezos, signerAlice, signerBob, alice, bob };
