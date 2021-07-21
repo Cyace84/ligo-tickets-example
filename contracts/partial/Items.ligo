@@ -23,3 +23,11 @@ type consumable_type    is [@layout:comb] record [
 ]
 
 type consumable_item_type is ticket(consumable_type)
+
+type ticket_info_type   is  record[
+  ticketer                : address;
+  id                      : nat;
+  name                    : string;
+  value                   : nat;
+  amount                  : nat;
+]

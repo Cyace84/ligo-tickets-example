@@ -98,7 +98,6 @@ describe("test", async function () {
 
       const gameStorage = await gameContract.storage();
       const duel = await gameStorage.arena.duels.get(1);
-      console.log(duel);
 
       strictEqual(duel.hero_1, aliceAcc);
       strictEqual(duel.hero_2, bobAcc);
