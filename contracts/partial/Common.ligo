@@ -2,7 +2,7 @@ function read_ticket(
   const ticket  : consumable_item_type)
                 : ticket_info_type is
   case (Tezos.read_ticket (ticket)) of
-    (content, ticket) -> case content of
+    (content, _) -> case content of
       (addr, x) ->
         case x of
           (payload, amt) -> record[

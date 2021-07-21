@@ -10,6 +10,11 @@ type inventory_type     is [@layout:comb] record [
     next_slot_item       : slot_id_type;
 ]
 
+type return_consumable_item is [@layout:comb] record[
+  ticket                      : consumable_item_type;
+  updated_tickets             : map_items_type
+]
+
 type equip_type         is [@layout:comb] record [
     weapon               : option(weapon_type);
 ]
