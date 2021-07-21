@@ -310,13 +310,6 @@ function send_invite(
   const s               : storage_type)
                         : return is
   block {
-    const inv : consumable_type =
-        record [
-          id    = 0n;
-          name  = "Reg ticket";
-          value = 1n;
-        ];
-
     const invite : consumable_item_type =
           create_ticket(0n, "Reg ticket", 1n, 1n);
 
